@@ -1,0 +1,6 @@
+*.class
+*.ser
+.DS_Store
+.vscode/
+.idea/
+*.iml
