@@ -13,6 +13,14 @@ public class Admin extends Employee {
 
     public void addUser(User u) {
         if (u != null) {
+            if (u.getEmail() == null || u.getEmail().trim().isEmpty()) {
+                System.out.println("User email cannot be empty.");
+                return;
+            }
+            if (DataStorage.getInstance().getUserByEmail(u.getEmail()) != null) {
+                System.out.println("User with email " + u.getEmail() + " already exists.");
+                return;
+            }
             DataStorage.getInstance().getUsers().add(u);
             DataStorage.getInstance().addLog("Admin added user: " + u.getEmail() + " (" + u.getClass().getSimpleName() + ")");
             System.out.println("User " + u.getEmail() + " successfully added to the system.");

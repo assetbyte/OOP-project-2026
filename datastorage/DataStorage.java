@@ -49,8 +49,12 @@ public class DataStorage implements Serializable {
     }
 
     public User getUserByEmail(String email) {
+        if (email == null) {
+            return null;
+        }
         for (User u : users) {
-            if (u.getEmail().equalsIgnoreCase(email)) {
+            String userEmail = u.getEmail();
+            if (userEmail != null && userEmail.equalsIgnoreCase(email)) {
                 return u;
             }
         }

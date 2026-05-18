@@ -18,6 +18,7 @@ public class Employee extends User {
             String formattedMessage = "[" + new java.util.Date() + "] From " + this.getEmail() + ": " + text;
             
             receiver.receiveMessage(formattedMessage);
+            messageHistory.add("To " + receiver.getEmail() + ": " + text);
             
             datastorage.DataStorage.getInstance().addLog("Employee " + this.getEmail() + " sent a message to " + receiver.getEmail());
             
