@@ -10,8 +10,6 @@ public class Main {
     private static Scanner scanner = new Scanner(System.in);
 
     public static void main(String[] args) {
-        
-        DataStorage.loadData();
         DataStorage db = DataStorage.getInstance();
 
         
@@ -140,6 +138,7 @@ public class Main {
                 System.out.println("1. Посмотреть все курсы");
                 System.out.println("2. Добавить новый курс");
                 System.out.println("3. Посмотреть всех студентов");
+                System.out.println("4. Добавить нового преподавателя");
                 System.out.println("5. Назначить преподавателя на курс");
                 System.out.println("6. Удалить студента по ID");
                 System.out.println("7. Посмотреть заявки на курсы и одобрить");
@@ -327,8 +326,13 @@ public class Main {
                                 i + 1, proj.topic, formattedDate, proj.participants.size(), proj.publishedPapers.size());
                     }
                     System.out.print("\nВыберите номер проекта для детального просмотра (или 0 для возврата): ");
-                    int projectChoice = Integer.parseInt(scanner.nextLine());
+                    Integer projectChoice = readIntOrNull(null);
+                    if (projectChoice == null) continue;
                     if (projectChoice == 0) continue;
+                    if (projectChoice < 1 || projectChoice > allProjects.size()) {
+                        System.out.println("[Ошибка] Неверный номер проекта.");
+                        continue;
+                    }
                     
                     research.ResearchProject selectedProj = allProjects.get(projectChoice - 1);
                     System.out.println("\n========================================");
@@ -438,7 +442,11 @@ public class Main {
                 }
                 if (targetP != null) {
                     System.out.print("Введите название статьи: "); String title = scanner.nextLine();
-                    System.out.print("Количество цитирований (citations): "); int cites = Integer.parseInt(scanner.nextLine());
+                    Integer cites = readIntOrNull("Количество цитирований (citations): ");
+                    if (cites == null || cites < 0) {
+                        System.out.println("[Ошибка] Цитирования должны быть целым числом >= 0.");
+                        continue;
+                    }
                     System.out.print("DOI: "); String doi = scanner.nextLine();
                     
                     research.ResearchPaper paper = new research.ResearchPaper(title, cites, doi);
@@ -467,7 +475,11 @@ public class Main {
         } else if (option.equals("2")) {
             System.out.print("Код курса (CS101): "); String code = scanner.nextLine();
             System.out.print("Название курса: "); String name = scanner.nextLine();
-            System.out.print("Кредиты: "); int credits = Integer.parseInt(scanner.nextLine());
+            Integer credits = readIntOrNull("Кредиты: ");
+            if (credits == null || credits <= 0) {
+                System.out.println("[Ошибка] Кредиты должны быть положительным целым числом.");
+                return;
+            }
             System.out.print("Для каких специальностей курс (через запятую, напр. CSSE,IS): "); String majorsInput = scanner.nextLine();
             List<String> majorsList = new ArrayList<>();
             for (String m : majorsInput.split(",")) majorsList.add(m.trim().toUpperCase());
@@ -600,7 +612,6 @@ public class Main {
                     targetCourse.getPendingStudents().add(student);
                     DataStorage.getInstance().addLog("Студент " + student.getEmail() + " подал заявку на курс " + targetCourse.courseCode);
                     DataStorage.saveData();
-                    DataStorage.saveData();
                     System.out.println("[Успех] Ваша заявка на курс " + targetCourse.courseCode + " отправлена Менеджеру КБТУ на апрув.");
                 } else {
                     System.out.println("[Внимание] Вы уже подали заявку на этот курс и ожидаете одобрения.");
@@ -667,8 +678,7 @@ public class Main {
     }
 
     private static void handleTeacherActions(Teacher teacher, String option) {
-        DataStorage db = DataStorage.getInstance();
-        if (teacher.courses.isEmpty()) {
+        if (!option.equals("4") && teacher.courses.isEmpty()) {
             System.out.println("У вас нет активных курсов.");
             return;
         }
@@ -684,8 +694,11 @@ public class Main {
             Student selectedStudent = selectCourseStudent(selectedCourse);
             if (selectedStudent == null) return;
 
-            System.out.print("Введите балл за занятие (например, от 0 до 4): ");
-            double score = Double.parseDouble(scanner.nextLine());
+            Double score = readDoubleOrNull("Введите балл за занятие (например, от 0 до 4): ");
+            if (score == null || score < 0 || score > 4) {
+                System.out.println("[Ошибка] Балл за занятие должен быть в диапазоне 0..4.");
+                return;
+            }
             System.out.print("Комментарий/Тип занятия: ");
             String comment = scanner.nextLine();
 
@@ -698,8 +711,6 @@ public class Main {
 
             progress.dailyMarks.add(new academic.LessonMark(score, comment));
             DataStorage.getInstance().addLog("Преподаватель " + teacher.getLastName() + " выставил балл " + score + " студенту " + selectedStudent.getEmail());
-            DataStorage.saveData();
-                        
             DataStorage.saveData();
             System.out.printf("[Успех] Балл назначен. Текущая сумма студента за семестр: %.1f/60.0\n", progress.getCurrentTermScore());
         } 
@@ -722,15 +733,16 @@ public class Main {
                 System.out.println("[Внимание] Финал по этому курсу уже был выставлен!");
             }
 
-            System.out.print("Введите балл за Финальный Экзамен (0-40): ");
-            double finalScore = Double.parseDouble(scanner.nextLine());
+            Double finalScore = readDoubleOrNull("Введите балл за Финальный Экзамен (0-40): ");
+            if (finalScore == null || finalScore < 0 || finalScore > 40) {
+                System.out.println("[Ошибка] Балл финального экзамена должен быть в диапазоне 0..40.");
+                return;
+            }
 
             progress.finalExamMark = finalScore;
             progress.isFinalPassed = true;
 
             DataStorage.getInstance().addLog("Преподаватель " + teacher.getLastName() + " ЗАКРЫЛ КУРС для " + selectedStudent.getEmail() + " с финалом " + finalScore);
-            DataStorage.saveData();
-            
             DataStorage.saveData();
             System.out.printf("[Успех] Финал сохранен! Итоговый балл: %.1f (%s). Курс внесен в транскрипт.\n", 
                     progress.getTotalScore(), progress.getLetterGrade());
@@ -759,8 +771,8 @@ public class Main {
         }
 
         System.out.print("\nВыберите номер курса для генерации репорта (или 0 для отмены): ");
-        int choice = Integer.parseInt(scanner.nextLine());
-        if (choice <= 0 || choice > allCourses.size()) return;
+        Integer choice = readIntOrNull(null);
+        if (choice == null || choice <= 0 || choice > allCourses.size()) return;
 
         Course selectedCourse = allCourses.get(choice - 1);
 
@@ -814,6 +826,30 @@ public class Main {
             DataStorage.saveData();
         } else {
             System.out.println("Генерация отчета отменена.");
+        }
+    }
+
+    private static Integer readIntOrNull(String prompt) {
+        if (prompt != null) {
+            System.out.print(prompt);
+        }
+        try {
+            return Integer.parseInt(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("[Ошибка] Введите корректное целое число.");
+            return null;
+        }
+    }
+
+    private static Double readDoubleOrNull(String prompt) {
+        if (prompt != null) {
+            System.out.print(prompt);
+        }
+        try {
+            return Double.parseDouble(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("[Ошибка] Введите корректное число.");
+            return null;
         }
     }
 

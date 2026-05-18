@@ -22,7 +22,9 @@ public abstract class User implements Serializable, research.Researcher {
     }
 
     public User(String id, String email, String firstName, String lastName, String password) {
-        this.id = String.valueOf((int)(Math.random() * 9000) + 1000); 
+        this.id = (id != null && !id.trim().isEmpty())
+                ? id
+                : String.valueOf((int) (Math.random() * 9000) + 1000);
         this.email = email;
         this.firstName = firstName;
         this.lastName = lastName;

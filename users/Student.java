@@ -19,7 +19,10 @@ public class Student extends User {
     }
 
     public double calculateGPA() {
-        if (courseProgressMap.isEmpty()) return 0.0;
+        if (courseProgressMap.isEmpty()) {
+            this.GPA = 0.0;
+            return this.GPA;
+        }
 
         double totalPoints = 0.0;
         int totalCreditsCounted = 0;
@@ -34,8 +37,12 @@ public class Student extends User {
             }
         }
 
-        if (totalCreditsCounted == 0) return 0.0;
-        return totalPoints / totalCreditsCounted;
+        if (totalCreditsCounted == 0) {
+            this.GPA = 0.0;
+            return this.GPA;
+        }
+        this.GPA = totalPoints / totalCreditsCounted;
+        return this.GPA;
     }
 
     public void registerToCourse(Course c) {

@@ -15,8 +15,7 @@ public class Manager extends Employee {
     }
 
     public void approveRegistration(Student s, Course c) {
-        s.courseProgressMap.put(c, new academic.CourseProgress());
-        System.out.println("Manager " + getLastName() + " approved registration for " + s.getFirstName() + " to " + c.courseName);
+        approveRegistration(c, s);
     }
 
     public void addCourse(Course c) {

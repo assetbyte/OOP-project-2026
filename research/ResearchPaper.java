@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class ResearchPaper implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public String title;
     public List<Researcher> authors = new ArrayList<>();
