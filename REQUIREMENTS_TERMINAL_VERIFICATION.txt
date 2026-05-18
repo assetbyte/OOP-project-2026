@@ -1,0 +1,154 @@
+REQUIREMENTS TERMINAL VERIFICATION (UPDATED)
+
+Project root:
+d:\Programming\GithubDesktop\OOP-project-2026
+
+==================================================
+0) PREPARE
+==================================================
+1. cd /d d:\Programming\GithubDesktop\OOP-project-2026
+2. javac Main.java SeedDemoData.java academic\*.java datastorage\*.java enums\*.java exceptions\*.java research\*.java users\*.java
+3. generate_demo_db.bat
+4. java Main
+
+==================================================
+1) Lesson type lecture/practice
+==================================================
+Static check:
+findstr /N /I "LECTURE PRACTICE" enums\LessonType.java
+findstr /N /I "LessonType type" academic\Lesson.java
+
+Expected:
+- enum contains LECTURE and PRACTICE
+- Lesson has LessonType field
+
+==================================================
+2) Student = bachelor
+==================================================
+Static check:
+findstr /N /I "isBachelor Program: Bachelor" users\Student.java Main.java
+
+Runtime check:
+- Login as student1@kbtu.kz / student123
+- Option 1 (transcript)
+- Transcript should display "Программа: Bachelor"
+
+==================================================
+3) 4th year supervisor + h-index < 3 => custom exception
+==================================================
+Runtime check:
+1. Login as Manager (manager.dep@kbtu.kz / manager123)
+2. Option 14 (назначить научного руководителя)
+3. Try supervisor = teacher.lecturer@kbtu.kz (обычно h-index < 3)
+   Expected: assignment rejected with custom error message
+4. Try supervisor = teacher.prof@kbtu.kz
+   Expected: successful assignment
+
+Static check:
+findstr /N /I "assignResearchSupervisor LowHIndexException" users\Student.java
+
+==================================================
+4) More than 1 instructor per course
+==================================================
+Runtime check:
+1. Manager -> option 5 (назначение преподавателя на курс)
+2. Assign two teachers to one course (e.g., CS201)
+3. Login as each teacher -> option 1
+
+Expected:
+- Same course visible for both teachers
+
+==================================================
+5) Teacher/Student can be researchers.
+   Professors are always researchers.
+   Employee can be researcher.
+==================================================
+Static check:
+findstr /N /I "isResearcher getResearchProfile setTitle PROFESSOR" users\Teacher.java
+findstr /N /I "activateResearchProfile" users\User.java SeedDemoData.java
+
+Runtime check:
+1. Login teacher.prof@kbtu.kz / teacher123 -> option 8 should be available immediately.
+2. Login student1@kbtu.kz / student123 -> option 14 activates researcher profile.
+3. Seed includes employee.researcher@kbtu.kz with active research profile.
+
+==================================================
+6) ResearchPaper fields (5-10 important)
+==================================================
+Static check:
+findstr /N /I "title authors publicationDate citations doi journal startPage endPage" research\ResearchPaper.java
+
+Expected fields:
+- title
+- authors
+- publicationDate
+- citations
+- doi
+- journal
+- startPage
+- endPage
+
+==================================================
+7) PrintPapers(Comparator c): date / citations / article length(pages)
+==================================================
+Runtime check:
+1. Login as researcher (teacher.prof@kbtu.kz)
+2. Option 8 (research cabinet)
+3. Option 1 (my papers)
+4. Test all sort choices:
+   - 1 citations
+   - 2 date published
+   - 3 article length/pages
+
+Static check:
+findstr /N /I "chooseResearchComparatorFromConsole getArticleLengthInPages getPublicationDate" Main.java research\ResearchPaper.java
+
+==================================================
+8) Print papers of ALL researchers in university (sorted)
+==================================================
+Runtime check:
+1. Login as Manager or Admin
+2. Option 16
+3. Choose sort mode (1/2/3)
+
+Expected:
+- Output grouped by researcher with sorted paper lists
+
+==================================================
+9) Top cited researcher of school, of year (among all schools)
+==================================================
+Runtime check:
+1. Login as Manager or Admin
+2. Option 17
+3. Enter year (e.g., current year)
+4. Enter school (e.g., CSSE/CS DEPARTMENT/etc.) OR ALL
+
+Expected:
+- Top cited for selected school-year
+- If ALL, top cited printed per each school
+
+==================================================
+10) ResearchProject join: non-researcher => custom exception
+==================================================
+Static check:
+findstr /N /I "addParticipant NotAResearcherException" research\ResearchProject.java
+
+Runtime check:
+1. Student without active research profile tries to apply project (option 12)
+   Expected: blocked until activation (option 14)
+2. If non-researcher reaches approval flow, join is rejected with NotAResearcherException message.
+
+==================================================
+STATUS SUMMARY
+==================================================
+1. Lesson type lecture/practice -> PASS
+2. Student bachelor -> PASS
+3. 4th year supervisor + h-index check + custom exception -> PASS
+4. >1 instructor per course -> PASS
+5. Researcher role rules (incl. professor always) -> PASS
+6. ResearchPaper important fields -> PASS
+7. PrintPapers with date/citations/pages -> PASS
+8. Print papers of all researchers (university-wide) -> PASS
+9. Top cited researcher of school/year (incl. ALL schools mode) -> PASS
+10. Non-researcher join project throws custom exception -> PASS
+

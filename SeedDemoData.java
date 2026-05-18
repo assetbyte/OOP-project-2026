@@ -8,6 +8,8 @@ import academic.LessonMark;
 import datastorage.DataStorage;
 import enums.ManagerType;
 import enums.TeacherTitle;
+import exceptions.LowHIndexException;
+import exceptions.NotAResearcherException;
 import research.ResearchPaper;
 import research.ResearchProject;
 import users.Admin;
@@ -103,17 +105,24 @@ public class SeedDemoData {
         ResearchProject rp2 = new ResearchProject("Data Engineering in Smart Campus");
         db.projects.addAll(Arrays.asList(rp1, rp2));
 
-        rp1.addParticipant(profTeacher);
-        rp1.addParticipant(seniorTeacher);
-        rp1.addParticipant(s3);
-        rp1.addParticipant(labEngineer);
+        safelyAddParticipant(rp1, profTeacher);
+        safelyAddParticipant(rp1, seniorTeacher);
+        safelyAddParticipant(rp1, s3);
+        safelyAddParticipant(rp1, labEngineer);
 
-        rp2.addParticipant(seniorTeacher);
-        rp2.addParticipant(labEngineer);
+        safelyAddParticipant(rp2, seniorTeacher);
+        safelyAddParticipant(rp2, labEngineer);
 
-        addPaperToProject(rp1, "Adaptive AI Tutoring with Explainable Models", 26, "10.1000/xyz123", profTeacher, seniorTeacher, s3);
-        addPaperToProject(rp1, "Student Success Prediction on University Data", 15, "10.1000/xyz124", profTeacher, labEngineer);
-        addPaperToProject(rp2, "Event-Driven Data Pipeline for Campus Systems", 9, "10.1000/xyz125", seniorTeacher, labEngineer);
+        addPaperToProject(rp1, "Adaptive AI Tutoring with Explainable Models", 26, "10.1000/xyz123", "IEEE Access", 101, 114, profTeacher, seniorTeacher, s3);
+        addPaperToProject(rp1, "Student Success Prediction on University Data", 15, "10.1000/xyz124", "Education Data Journal", 45, 54, profTeacher, labEngineer);
+        addPaperToProject(rp2, "Event-Driven Data Pipeline for Campus Systems", 9, "10.1000/xyz125", "Systems Engineering Review", 5, 13, seniorTeacher, labEngineer);
+        addPaperToProject(rp1, "Human-Centered Learning Analytics Framework", 7, "10.1000/xyz126", "KBTU Computing Letters", 201, 210, profTeacher, s3);
+
+        try {
+            s3.assignResearchSupervisor(profTeacher);
+        } catch (NotAResearcherException | LowHIndexException e) {
+            System.out.println("Seed warning: " + e.getMessage());
+        }
 
         // Pending research applications (for manager moderation demo)
         rp2.getPendingResearchers().add(s1);
@@ -166,7 +175,7 @@ public class SeedDemoData {
         t.setEmail(email);
         t.setPassword(pass);
         t.specialty = specialty;
-        t.title = title;
+        t.setTitle(title);
         t.department = "CS";
         return t;
     }
@@ -213,8 +222,8 @@ public class SeedDemoData {
         s.calculateGPA();
     }
 
-    private static void addPaperToProject(ResearchProject project, String title, int citations, String doi, User... authors) {
-        ResearchPaper paper = new ResearchPaper(title, citations, doi);
+    private static void addPaperToProject(ResearchProject project, String title, int citations, String doi, String journal, int startPage, int endPage, User... authors) {
+        ResearchPaper paper = new ResearchPaper(title, citations, doi, journal, startPage, endPage);
         List<User> realAuthors = new ArrayList<>(Arrays.asList(authors));
         for (User author : realAuthors) {
             paper.authors.add(author);
@@ -223,6 +232,14 @@ public class SeedDemoData {
             }
         }
         project.addPaper(paper);
+    }
+
+    private static void safelyAddParticipant(ResearchProject project, User user) {
+        try {
+            project.addParticipant(user);
+        } catch (NotAResearcherException e) {
+            System.out.println("Seed warning: " + e.getMessage());
+        }
     }
 
     private static void printSummary(DataStorage db) {

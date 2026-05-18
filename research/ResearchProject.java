@@ -2,6 +2,8 @@ package research;
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import exceptions.NotAResearcherException;
+import users.User;
 
 public class ResearchProject implements Serializable {
 
@@ -26,8 +28,17 @@ public class ResearchProject implements Serializable {
         return pendingResearchers;
     }
     
-    public void addParticipant(Researcher r) {
-        if (r != null && !participants.contains(r)) {
+    public void addParticipant(Researcher r) throws NotAResearcherException {
+        if (r == null) {
+            throw new NotAResearcherException("Null user cannot join research project.");
+        }
+        if (r instanceof User) {
+            User u = (User) r;
+            if (!u.isResearcher()) {
+                throw new NotAResearcherException("User " + u.getEmail() + " is not a researcher and cannot join project " + topic);
+            }
+        }
+        if (!participants.contains(r)) {
             participants.add(r);
             r.joinProject(this); 
             System.out.println("Researcher added to project: " + topic);

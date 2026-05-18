@@ -2,6 +2,10 @@ import java.util.Scanner;
 import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
 import datastorage.DataStorage;
 import users.*;
 import academic.Course;
@@ -147,13 +151,18 @@ public class Main {
                 System.out.println("11. [Наука] Посмотреть заявки на проекты и одобрить");
                 System.out.println("12. [Наука] Управление проектами (Просмотр и исключение участников)");
                 System.out.println("13. [Наука] Исключить участника из Научного Проекта");
+                System.out.println("14. [Наука] Назначить научного руководителя 4-курcнику");
                 System.out.println("15. Написать сообщение коллеге/студенту (UML-Mail)");
+                System.out.println("16. [Наука] Печать публикаций всех researchers (с сортировкой)");
+                System.out.println("17. [Наука] Top cited researcher по School и Year");
             } 
             else if (user instanceof Admin) { 
                 System.out.println("1. Создать/Добавить нового пользователя");
                 System.out.println("2. Удалить пользователя по Email");
                 System.out.println("3. Посмотреть системные логи (Действия пользователей)");
                 System.out.println("15. Написать сообщение коллеге/студенту (UML-Mail)");
+                System.out.println("16. [Наука] Печать публикаций всех researchers (с сортировкой)");
+                System.out.println("17. [Наука] Top cited researcher по School и Year");
             } 
             else {
                 if (user instanceof Student) {
@@ -169,6 +178,9 @@ public class Main {
                     System.out.println("15. Написать сообщение коллеге/студенту (UML-Mail)");
                 }
                 System.out.println("12. [Наука] Подать заявку на вступление в Научный Проект");
+                if (!user.isResearcher()) {
+                    System.out.println("14. [Наука] Активировать профиль исследователя");
+                }
             }
 
             if (user.isResearcher()) {
@@ -193,6 +205,18 @@ public class Main {
                     }
                 }
                 continue; 
+            }
+            if ((option.equals("16") || option.equals("17")) && !(user instanceof Admin || user instanceof Manager)) {
+                System.out.println("[Ошибка] Доступно только для Admin/Manager.");
+                continue;
+            }
+            if (option.equals("16")) {
+                printAllResearchersPapersSorted();
+                continue;
+            }
+            if (option.equals("17")) {
+                printTopCitedResearcherOfSchoolByYear();
+                continue;
             }
             if (option.equals("15") && user instanceof Employee) {
                 System.out.println("\n--- ОТПРАВКА СООБЩЕНИЯ (UML) ---");
@@ -391,12 +415,23 @@ public class Main {
                     research.ResearchProject targetProj = null;
                     for (research.ResearchProject p : DataStorage.getInstance().projects) if (p.topic.equalsIgnoreCase(topic)) targetProj = p;
                     if (targetProj != null) {
+                        if (!user.isResearcher()) {
+                            System.out.println("[Ошибка] Сначала активируйте исследовательский профиль (опция 14).");
+                            continue;
+                        }
                         if (!targetProj.pendingResearchers.contains(user)) {
                             targetProj.pendingResearchers.add(user);
                             DataStorage.saveData();
                             System.out.println("[Успех] Ваша заявка отправлена Менеджеру.");
                         } else System.out.println("Вы уже подали заявку.");
                     } else System.out.println("Проект не найден.");
+                } else if (option.equals("14")) {
+                    if (!user.isResearcher()) {
+                        user.activateResearchProfile();
+                        DataStorage.saveData();
+                    } else {
+                        System.out.println("Профиль исследователя уже активирован.");
+                    }
                 } else if (user instanceof Student) {
                     handleStudentActions((Student) user, option);
                 } else if (user instanceof Teacher) {
@@ -424,7 +459,8 @@ public class Main {
             if (option.equals("0")) break;
 
             if (option.equals("1")) {
-                user.printPapers((p1, p2) -> p2.citations - p1.citations);
+                Comparator<research.ResearchPaper> comparator = chooseResearchComparatorFromConsole();
+                user.printPapers(comparator);
             } else if (option.equals("2")) {
                 if (user.getResearchProfile().projects.isEmpty()) {
                     System.out.println("Вы пока не состоите ни в одном одобренном научном проекте.");
@@ -447,9 +483,17 @@ public class Main {
                         System.out.println("[Ошибка] Цитирования должны быть целым числом >= 0.");
                         continue;
                     }
+                    System.out.print("Журнал/конференция: ");
+                    String journal = scanner.nextLine();
+                    Integer startPage = readIntOrNull("Первая страница статьи: ");
+                    Integer endPage = readIntOrNull("Последняя страница статьи: ");
+                    if (startPage == null || endPage == null || startPage <= 0 || endPage < startPage) {
+                        System.out.println("[Ошибка] Неверно задан диапазон страниц.");
+                        continue;
+                    }
                     System.out.print("DOI: "); String doi = scanner.nextLine();
                     
-                    research.ResearchPaper paper = new research.ResearchPaper(title, cites, doi);
+                    research.ResearchPaper paper = new research.ResearchPaper(title, cites, doi, journal, startPage, endPage);
                     
                     
                     for (research.Researcher res : targetP.participants) {
@@ -495,7 +539,7 @@ public class Main {
             System.out.print("Специальность (CSSE/IS): "); String specialty = scanner.nextLine();
             Teacher teacher = new Teacher();
             teacher.setFirstName(firstName); teacher.setLastName(lastName); teacher.setEmail(email); teacher.setPassword(password);
-            teacher.title = enums.TeacherTitle.LECTURER; teacher.specialty = specialty.toUpperCase(); teacher.department = manager.department;
+            teacher.setTitle(enums.TeacherTitle.LECTURER); teacher.specialty = specialty.toUpperCase(); teacher.department = manager.department;
             db.getUsers().add(teacher);
             DataStorage.saveData();
             System.out.println("Преподаватель добавлен с ID: " + teacher.getId());
@@ -540,6 +584,53 @@ public class Main {
         }
         else if (option.equals("8")) {
             generateCourseReport((manager));
+        } else if (option.equals("14")) {
+            System.out.println("\n--- НАЗНАЧЕНИЕ НАУЧНОГО РУКОВОДИТЕЛЯ ---");
+            List<Student> fourthYearStudents = new ArrayList<>();
+            for (User u : db.getUsers()) {
+                if (u instanceof Student && ((Student) u).yearOfStudy == 4) {
+                    fourthYearStudents.add((Student) u);
+                }
+            }
+
+            if (fourthYearStudents.isEmpty()) {
+                System.out.println("В системе нет студентов 4 курса.");
+                return;
+            }
+
+            System.out.println("Список студентов 4 курса:");
+            for (Student s : fourthYearStudents) {
+                System.out.println("- ID: " + s.getId() + " | " + s.getFirstName() + " " + s.getLastName());
+            }
+            System.out.print("Введите ID студента: ");
+            String studentId = scanner.nextLine();
+
+            Student targetStudent = null;
+            for (Student s : fourthYearStudents) {
+                if (s.getId().equals(studentId)) {
+                    targetStudent = s;
+                    break;
+                }
+            }
+            if (targetStudent == null) {
+                System.out.println("Студент не найден.");
+                return;
+            }
+
+            System.out.print("Введите Email научного руководителя: ");
+            String supervisorEmail = scanner.nextLine();
+            User supervisor = db.getUserByEmail(supervisorEmail);
+            if (supervisor == null) {
+                System.out.println("Пользователь не найден.");
+                return;
+            }
+
+            try {
+                targetStudent.assignResearchSupervisor(supervisor);
+                DataStorage.saveData();
+            } catch (exceptions.NotAResearcherException | exceptions.LowHIndexException e) {
+                System.out.println("Назначение отклонено: " + e.getMessage());
+            }
         }
     }
 
@@ -551,6 +642,15 @@ public class Main {
             System.out.println("========================================");
             System.out.println("Студент: " + student.getFirstName() + " " + student.getLastName());
             System.out.println("Специальность: " + student.major);
+            System.out.println("Программа: Bachelor");
+            if (student.yearOfStudy == 4) {
+                if (student.researchSupervisor instanceof User) {
+                    User supervisor = (User) student.researchSupervisor;
+                    System.out.println("Научный руководитель: " + supervisor.getFirstName() + " " + supervisor.getLastName() + " (" + supervisor.getEmail() + ")");
+                } else {
+                    System.out.println("Научный руководитель: не назначен");
+                }
+            }
             System.out.println("----------------------------------------");
             
             boolean hasClosedCourses = false;
@@ -827,6 +927,133 @@ public class Main {
         } else {
             System.out.println("Генерация отчета отменена.");
         }
+    }
+
+    private static Comparator<research.ResearchPaper> chooseResearchComparatorFromConsole() {
+        System.out.println("Сортировать публикации по:");
+        System.out.println("1. Citations (по убыванию)");
+        System.out.println("2. Date published (сначала новые)");
+        System.out.println("3. Article length/pages (по убыванию)");
+        System.out.print("Выберите тип сортировки: ");
+        String sortChoice = scanner.nextLine();
+
+        if (sortChoice.equals("2")) {
+            return (p1, p2) -> p2.getPublicationDate().compareTo(p1.getPublicationDate());
+        }
+        if (sortChoice.equals("3")) {
+            return (p1, p2) -> Integer.compare(p2.getArticleLengthInPages(), p1.getArticleLengthInPages());
+        }
+        return (p1, p2) -> Integer.compare(p2.getCitations(), p1.getCitations());
+    }
+
+    private static void printAllResearchersPapersSorted() {
+        DataStorage db = DataStorage.getInstance();
+        Comparator<research.ResearchPaper> comparator = chooseResearchComparatorFromConsole();
+
+        System.out.println("\n--- ПУБЛИКАЦИИ ВСЕХ ИССЛЕДОВАТЕЛЕЙ KBTU ---");
+        int researchersPrinted = 0;
+
+        for (User u : db.getUsers()) {
+            if (!u.isResearcher()) {
+                continue;
+            }
+            researchersPrinted++;
+            System.out.println("\nResearcher: " + u.getFirstName() + " " + u.getLastName() + " | " + u.getEmail());
+            u.printPapers(comparator);
+        }
+
+        if (researchersPrinted == 0) {
+            System.out.println("В системе пока нет активных исследователей.");
+        }
+    }
+
+    private static void printTopCitedResearcherOfSchoolByYear() {
+        DataStorage db = DataStorage.getInstance();
+        Set<String> schools = new HashSet<>();
+        for (User u : db.getUsers()) {
+            if (u.isResearcher()) {
+                schools.add(getSchoolName(u));
+            }
+        }
+        if (schools.isEmpty()) {
+            System.out.println("В системе нет активных исследователей.");
+            return;
+        }
+
+        System.out.println("Доступные School значения: " + schools);
+        System.out.print("Введите School (или ALL): ");
+        String school = scanner.nextLine().trim().toUpperCase();
+        Integer year = readIntOrNull("Введите год (например 2026): ");
+        if (year == null) {
+            return;
+        }
+
+        if (school.equals("ALL")) {
+            for (String schoolName : schools) {
+                printTopCitedForSpecificSchool(db, schoolName, year);
+            }
+            return;
+        }
+
+        printTopCitedForSpecificSchool(db, school, year);
+    }
+
+    private static void printTopCitedForSpecificSchool(DataStorage db, String school, int year) {
+        User topResearcher = null;
+        int topCitations = -1;
+        for (User u : db.getUsers()) {
+            if (!u.isResearcher()) {
+                continue;
+            }
+            if (!getSchoolName(u).equalsIgnoreCase(school)) {
+                continue;
+            }
+            int citationsInYear = getCitationsInYear(u, year);
+            if (citationsInYear > topCitations) {
+                topCitations = citationsInYear;
+                topResearcher = u;
+            }
+        }
+
+        if (topResearcher == null) {
+            System.out.println("Для выбранного School нет исследователей.");
+            return;
+        }
+        if (topCitations <= 0) {
+            System.out.println("В выбранном School нет публикаций за " + year + ".");
+            return;
+        }
+
+        System.out.println("TOP CITED RESEARCHER [" + school + ", " + year + "]: "
+                + topResearcher.getFirstName() + " " + topResearcher.getLastName()
+                + " | Citations: " + topCitations);
+    }
+
+    private static String getSchoolName(User u) {
+        if (u instanceof Student) {
+            Student s = (Student) u;
+            return (s.major == null || s.major.trim().isEmpty()) ? "UNASSIGNED" : s.major.trim().toUpperCase();
+        }
+        if (u instanceof Employee) {
+            Employee e = (Employee) u;
+            return (e.department == null || e.department.trim().isEmpty()) ? "UNASSIGNED" : e.department.trim().toUpperCase();
+        }
+        return "GENERAL";
+    }
+
+    private static int getCitationsInYear(User u, int year) {
+        if (u.getResearchProfile() == null) {
+            return 0;
+        }
+        int total = 0;
+        for (research.ResearchPaper p : u.getResearchProfile().papers) {
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTime(p.getPublicationDate());
+            if (calendar.get(Calendar.YEAR) == year) {
+                total += p.getCitations();
+            }
+        }
+        return total;
     }
 
     private static Integer readIntOrNull(String prompt) {

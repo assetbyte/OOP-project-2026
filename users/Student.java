@@ -3,13 +3,18 @@ package users;
 import java.io.*;
 import java.util.*;
 import academic.*; 
+import exceptions.LowHIndexException;
+import exceptions.NotAResearcherException;
+import research.Researcher;
 
 public class Student extends User {
     public double GPA = 0.0;
     public int yearOfStudy;
+    public boolean isBachelor = true;
     public int totalCredits = 0;
     public String major;
     public boolean isResearcher;
+    public Researcher researchSupervisor;
     public List<Course> enrolledCourses = new ArrayList<>();
     public Map<Course, List<Mark>> marks = new HashMap<>();
     public java.util.HashMap<academic.Course, academic.CourseProgress> courseProgressMap = new java.util.HashMap<>();
@@ -177,8 +182,37 @@ public class Student extends User {
         System.out.println("Rated teacher " + t.getLastName() + " with score: " + score);
     }
 
+    public void assignResearchSupervisor(Researcher supervisor) throws NotAResearcherException, LowHIndexException {
+        if (this.yearOfStudy != 4) {
+            System.out.println("Research supervisor is required only for 4th year bachelor students.");
+            return;
+        }
+        if (!(supervisor instanceof User)) {
+            throw new NotAResearcherException("Supervisor must be a university researcher account.");
+        }
+
+        User supervisorUser = (User) supervisor;
+        if (!supervisorUser.isResearcher()) {
+            throw new NotAResearcherException("User " + supervisorUser.getEmail() + " is not an active researcher.");
+        }
+
+        supervisorUser.calculateHIndex();
+        double supervisorHIndex = supervisorUser.getResearchProfile().hIndex;
+        if (supervisorHIndex < 3.0) {
+            throw new LowHIndexException("Supervisor h-index is " + supervisorHIndex + ". Minimum required: 3.0");
+        }
+
+        this.researchSupervisor = supervisor;
+        System.out.println("Research supervisor assigned to " + getFirstName() + ": " + supervisorUser.getFirstName() + " " + supervisorUser.getLastName());
+    }
+
     @Override
     public String toString() {
-        return super.toString() + " | GPA: " + GPA + " | Year: " + yearOfStudy;
+        String supervisorInfo = "None";
+        if (researchSupervisor instanceof User) {
+            User supervisorUser = (User) researchSupervisor;
+            supervisorInfo = supervisorUser.getFirstName() + " " + supervisorUser.getLastName();
+        }
+        return super.toString() + " | Program: Bachelor | GPA: " + GPA + " | Year: " + yearOfStudy + " | Supervisor: " + supervisorInfo;
     }
 }

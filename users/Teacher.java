@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.util.*;
 import academic.Course;
 import enums.TeacherTitle;
+import research.ResearchProfile;
 
 public class Teacher extends Employee {
     private static final long serialVersionUID = 1L;
@@ -19,6 +20,26 @@ public class Teacher extends Employee {
 
     public Teacher() {
         super();
+    }
+
+    public void setTitle(TeacherTitle title) {
+        this.title = title;
+        if (title == TeacherTitle.PROFESSOR && !super.isResearcher()) {
+            activateResearchProfile();
+        }
+    }
+
+    @Override
+    public boolean isResearcher() {
+        return this.title == TeacherTitle.PROFESSOR || super.isResearcher();
+    }
+
+    @Override
+    public ResearchProfile getResearchProfile() {
+        if (this.title == TeacherTitle.PROFESSOR && super.getResearchProfile() == null) {
+            activateResearchProfile();
+        }
+        return super.getResearchProfile();
     }
 
     public void viewCourses() {

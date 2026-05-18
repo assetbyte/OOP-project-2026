@@ -5,6 +5,7 @@ import java.io.*;
 import java.util.*;
 import academic.*; 
 import datastorage.DataStorage;
+import exceptions.NotAResearcherException;
 
 public class Manager extends Employee {
 
@@ -116,13 +117,13 @@ public class Manager extends Employee {
     public void approveResearcherToProject(research.ResearchProject p, User user) {
         if (p.getPendingResearchers().contains(user)) {
             p.getPendingResearchers().remove(user); 
-            
-            if (!user.isResearcher()) {
-                user.activateResearchProfile();
+            try {
+                p.addParticipant(user); 
+                System.out.println("User " + user.getFirstName() + " successfully assigned to project: " + p.topic);
+            } catch (NotAResearcherException e) {
+                System.out.println("Approval rejected: " + e.getMessage());
+                p.getPendingResearchers().add(user);
             }
-            
-            p.addParticipant(user); 
-            System.out.println("User " + user.getFirstName() + " successfully assigned to project: " + p.topic);
         } else {
             System.out.println("This user did not apply for this project.");
         }
